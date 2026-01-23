@@ -10,9 +10,8 @@
         .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
         h2 { margin: 0 0 10px 0; font-size: 15px; color: #333; display: flex; align-items: center; justify-content: space-between; }
         .inv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .inv-item { padding: 12px; border-radius: 10px; text-align: center; border: 1px solid #ddd; background: #fafafa; position: relative; }
+        .inv-item { padding: 12px; border-radius: 10px; text-align: center; border: 1px solid #ddd; background: #fafafa; }
         .inv-val { font-size: 26px; font-weight: bold; display: block; margin-top: 4px; }
-        .value-tag { font-size: 11px; color: var(--gold); margin-top: 5px; font-weight: bold; }
         .btn { border: none; padding: 14px; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; width: 100%; }
         .btn-craft { background: var(--blue); margin-bottom: 10px; }
         .btn-toggle { background: #eee; color: #666; font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; width: auto; }
@@ -21,10 +20,13 @@
         .log-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; align-items: center; }
         .btn-undo { background: #fee; color: var(--danger); border: 1px solid #fcc; padding: 4px 10px; border-radius: 6px; font-size: 12px; width: auto; }
         .profit-txt { font-size: 18px; font-weight: bold; color: var(--success); text-align: center; margin-top: 5px; border-top: 1px dashed #eee; padding-top: 10px; }
+        .asset-total { text-align: center; font-size: 15px; color: var(--gold); font-weight: bold; margin: 10px 0; padding: 10px; background: #fffdf0; border-radius: 8px; border: 1px solid #fcebb6; }
         label { font-size: 12px; color: #666; font-weight: bold; }
-        .fix-area { display: flex; gap: 5px; margin-top: 10px; align-items: flex-end; border-top: 1px solid #f5f5f5; padding-top: 10px; }
         .market-fix { display: flex; gap: 5px; margin-top: 5px; }
-        .market-fix input { padding: 5px; font-size: 11px; margin-top: 0; }
+        .market-fix input { padding: 8px; font-size: 12px; margin-top: 0; background: #fff; }
+        .fix-area { display: flex; gap: 5px; margin-top: 10px; align-items: flex-end; border-top: 1px solid #f5f5f5; padding-top: 10px; }
+        .backup-area { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-small { padding: 8px; font-size: 12px; background: #666; flex: 1; }
     </style>
 </head>
 <body>
@@ -35,6 +37,169 @@
         </h2>
         <div class="inv-grid">
             <div class="inv-item">
+                <label id="lbl-w">白肉存量</label>
+                <span id="v-w" class="inv-val">0</span>
+            </div>
+            <div class="inv-item" style="border-color: var(--blue); background: #f0f7ff;">
+                <label id="lbl-b" style="color: var(--blue);">蓝肉存量</label>
+                <span id="v-b" class="inv-val" style="color:var(--blue);">0</span>
+            </div>
+        </div>
+
+        <div class="market-fix">
+            <div style="flex:1"><label>行情:白肉价</label><input type="number" id="m-price-w" placeholder="单价" oninput="render()"></div>
+            <div style="flex:1"><label>行情:蓝肉价</label><input type="number" id="m-price-b" placeholder="单价" oninput="render()"></div>
+        </div>
+
+        <div class="asset-total" id="total-asset">💰 库存预估总价值(税后): 0 钻</div>
+
+        <button class="btn btn-craft" onclick="doCraft()">⚒️ 执行全量合成 (3白➔1蓝)</button>
+        
+        <div class="fix-area">
+            <div style="flex:1"><label>校准白(个)</label><input type="number" id="f-w" placeholder="实数"></div>
+            <div style="flex:1"><label>校准蓝(个)</label><input type="number" id="f-b" placeholder="实数"></div>
+            <button class="btn btn-fix" onclick="fixStock()">校准</button>
+        </div>
+        <div id="v-profit" class="profit-txt">累计已结利润: 0 钻</div>
+    </div>
+
+    <div class="card">
+        <h2>📝 交易录入</h2>
+        <select id="t-type">
+            <option value="buy_w">采购白肉 (组/5个)</option>
+            <option value="farm_w">自产白肉 (组/5个)</option>
+            <option value="sell_b">变现蓝肉 (组/3个)</option>
+        </select>
+        <div style="display:flex; gap:10px; margin-top:5px;">
+            <div style="flex:1"><label>成交单价(组)</label><input type="number" id="t-price" placeholder="单价"></div>
+            <div style="flex:1"><label>成交数量(组)</label><input type="number" id="t-qty" placeholder="组数"></div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+            <button class="btn style="background:var(--success)" onclick="handleTrade('in')" style="background:var(--success)">确认入库</button>
+            <button class="btn style="background:var(--danger)" onclick="handleTrade('out')" style="background:var(--danger)">确认出货</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📜 历史记录</h2>
+        <div id="log-list" style="max-height:200px; overflow-y:auto;"></div>
+        <div class="backup-area">
+            <button class="btn btn-small" onclick="exportData()">📤 导出备份</button>
+            <button class="btn btn-small" onclick="importData()">📥 导入恢复</button>
+        </div>
+    </div>
+
+<script>
+    const DB_NAME = 'LEGEND_LEDGER_DATA_FINAL';
+    
+    let db = JSON.parse(localStorage.getItem(DB_NAME)) || { 
+        w: 0, b: 0, profit: 0, logs: [], unitMode: 'count', lastPriceW: 0, lastPriceB: 0 
+    };
+
+    function toggleUnit() { db.unitMode = db.unitMode === 'count' ? 'set' : 'count'; render(); }
+
+    function render() {
+        const isCount = db.unitMode === 'count';
+        document.getElementById('unit-btn').innerText = isCount ? '切换为：组' : '切换为：个';
+        
+        // 核心单价逻辑：手动输入优先，否则使用最后一次成交价
+        const manualW = parseFloat(document.getElementById('m-price-w').value) || db.lastPriceW || 0;
+        const manualB = parseFloat(document.getElementById('m-price-b').value) || db.lastPriceB || 0;
+
+        document.getElementById('v-w').innerText = isCount ? db.w : (db.w / 5).toFixed(1);
+        document.getElementById('v-b').innerText = isCount ? db.b : (db.b / 3).toFixed(1);
+
+        // 计算库存总价值 (库存组数 * 单价 * 0.8)
+        const worthW = (db.w / 5) * manualW * 0.8;
+        const worthB = (db.b / 3) * manualB * 0.8;
+        document.getElementById('total-asset').innerText = `💰 库存预估总价值(税后): ${Math.floor(worthW + worthB)} 钻`;
+
+        document.getElementById('v-profit').innerText = '累计已结利润: ' + Math.floor(db.profit) + ' 钻';
+        
+        const list = document.getElementById('log-list');
+        list.innerHTML = db.logs.map((l, index) => `
+            <div class="log-item">
+                <div style="flex:1"><div style="font-weight:bold">${l.m}</div><div style="font-size:10px; color:#bbb">${new Date(l.t).toLocaleTimeString()}</div></div>
+                <div style="color:${l.i>=0?'#27ae60':'#e74c3c'}; font-weight:bold; margin-right:10px;">${l.i>=0?'+':''}${Math.floor(l.i)}</div>
+                <button class="btn-undo" onclick="undo(${index})">撤回</button>
+            </div>
+        `).reverse().join('');
+        
+        localStorage.setItem(DB_NAME, JSON.stringify(db));
+    }
+
+    function handleTrade() {
+        const type = document.getElementById('t-type').value;
+        const p = parseFloat(document.getElementById('t-price').value) || 0;
+        const q_set = parseFloat(document.getElementById('t-qty').value) || 0;
+        if(q_set <= 0) return;
+
+        let i = 0; let m = ""; let q_count = 0;
+        if(type === 'buy_w' || type === 'farm_w') {
+            q_count = q_set * 5; i = type === 'buy_w' ? -(p * q_set) : 0;
+            db.w += q_count; db.profit += i; m = `${type==='buy_w'?'采购':'自产'}白肉 ${q_set}组`;
+            if(p > 0) db.lastPriceW = p;
+        } else if(type === 'sell_b') {
+            q_count = q_set * 3; i = (p * q_set) * 0.8;
+            db.b -= q_count; db.profit += i; m = `变现蓝肉 ${q_set}组`;
+            if(p > 0) db.lastPriceB = p;
+        }
+        db.logs.push({ type, p, q_set, q_count, i, m, t: Date.now() });
+        render();
+        document.getElementById('t-price').value = "";
+        document.getElementById('t-qty').value = "";
+    }
+
+    function doCraft() {
+        if(db.w < 3) return alert("白肉不足");
+        const c = Math.floor(db.w / 3); db.w -= c*3; db.b += c;
+        db.logs.push({ type: 'craft', w_lost: c*3, b_gain: c, i: 0, m: `合成: -${c*3}白 ➔ +${c}蓝`, t: Date.now() });
+        render();
+    }
+
+    function fixStock() {
+        const fw = document.getElementById('f-w').value; const fb = document.getElementById('f-b').value;
+        const oldW = db.w; const oldB = db.b;
+        if(fw !== "") db.w = parseInt(fw); if(fb !== "") db.b = parseInt(fb);
+        db.logs.push({ type: 'fix', oldW, oldB, i: 0, m: `⚙️ 手动校准库存`, t: Date.now() });
+        document.getElementById('f-w').value = ""; document.getElementById('f-b').value = "";
+        render();
+    }
+
+    function undo(index) {
+        const l = db.logs[index]; if(!l || !confirm(`确认撤回？`)) return;
+        if(l.type.includes('_w')) { db.w -= l.q_count; db.profit -= l.i; }
+        else if(l.type === 'sell_b') { db.b += l.q_count; db.profit -= l.i; }
+        else if(l.type === 'craft') { db.w += l.w_lost; db.b -= l.b_gain; }
+        else if(l.type === 'fix') { db.w = l.oldW; db.b = l.oldB; }
+        db.logs.splice(index, 1); render();
+    }
+
+    function exportData() {
+        const dataStr = JSON.stringify(db);
+        const tempInput = document.createElement('textarea');
+        tempInput.value = dataStr;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        alert('数据已导出并复制！请存入手机备忘录。');
+    }
+
+    function importData() {
+        const dataStr = prompt('请粘贴备份文本：');
+        if (dataStr) {
+            try {
+                const imported = JSON.parse(dataStr);
+                if(imported.logs) { db = imported; render(); alert('恢复成功！'); }
+            } catch(e) { alert('恢复失败，格式错误。'); }
+        }
+    }
+
+    render();
+</script>
+</body>
+</html>            <div class="inv-item">
                 <label id="lbl-w">白肉存量</label>
                 <span id="v-w" class="inv-val">0</span>
                 <div class="value-tag" id="val-w">估值: 0 钻</div>
