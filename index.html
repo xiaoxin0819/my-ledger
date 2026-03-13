@@ -2,31 +2,98 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>学习时长统计</title>
+<title>每日学习时长统计</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body { font-family: Arial, sans-serif; background: #f4f6fb; color: #111; padding: 20px; }
-h1 { text-align:center; }
-button { padding: 10px 20px; margin: 5px; font-size:16px; }
-#timer { font-size: 32px; margin: 20px 0; text-align:center; }
-canvas { max-width: 800px; margin: 30px auto; display:block; background:white; border-radius:12px; padding:20px; }
+body {
+  margin:0;
+  font-family: Arial, sans-serif;
+  background: #f0f4f8;
+  color:#111;
+}
+header {
+  text-align:center;
+  padding:20px;
+  font-size:24px;
+  font-weight:700;
+  color:#fff;
+  background: linear-gradient(135deg,#2563eb,#06b6d4);
+}
+.container {
+  padding:15px;
+}
+.card {
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  padding:15px;
+  margin-bottom:15px;
+}
+#timer {
+  font-size:36px;
+  text-align:center;
+  margin:10px 0;
+  font-weight:700;
+}
+button {
+  padding:10px 20px;
+  margin:5px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  color:#fff;
+  background: linear-gradient(135deg,#2563eb,#06b6d4);
+  box-shadow:0 3px 8px rgba(0,0,0,0.15);
+}
+button:active {
+  transform: scale(0.98);
+}
+button:disabled {
+  opacity:0.6;
+}
+canvas {
+  width:100%;
+  max-width:100%;
+  height:300px;
+  margin-top:10px;
+}
+footer {
+  text-align:center;
+  padding:15px;
+  font-size:12px;
+  color:#555;
+}
+@media(max-width:500px){
+  #timer { font-size:28px; }
+  button { font-size:14px; padding:8px 16px; }
+}
 </style>
 </head>
 <body>
 
-<h1>每日学习时长统计</h1>
-<div id="timer">00:00:00</div>
-<div style="text-align:center;">
-  <button id="startBtn">开始</button>
-  <button id="pauseBtn">暂停</button>
-  <button id="resetBtn">重置</button>
+<header>每日学习时长统计</header>
+
+<div class="container">
+  <div class="card">
+    <div id="timer">00:00:00</div>
+    <div style="text-align:center;">
+      <button id="startBtn">开始</button>
+      <button id="pauseBtn">暂停</button>
+      <button id="resetBtn">重置</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <canvas id="chart"></canvas>
+  </div>
 </div>
 
-<canvas id="chart"></canvas>
+<footer>学习时长统计 · 移动端版</footer>
 
 <script>
 let startTime = null;
-let elapsed = 0; // 已累计时间（毫秒）
+let elapsed = 0;
 let timerInterval = null;
 
 const timerDisplay = document.getElementById("timer");
@@ -34,6 +101,7 @@ const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const resetBtn = document.getElementById("resetBtn");
 
+// 时间格式化
 function formatTime(ms){
   let totalSec = Math.floor(ms/1000);
   let h = Math.floor(totalSec/3600).toString().padStart(2,'0');
@@ -71,7 +139,7 @@ resetBtn.onclick = () => {
   saveTodayTime(true);
 };
 
-// 数据存储
+// 本地数据存储
 function getData(){ return JSON.parse(localStorage.getItem("studyTime")||"{}"); }
 function saveData(data){ localStorage.setItem("studyTime", JSON.stringify(data)); }
 
@@ -84,7 +152,7 @@ function saveTodayTime(reset=false){
   updateChart();
 }
 
-// 图表
+// 初始化柱状图
 const ctx = document.getElementById("chart").getContext("2d");
 let chart = null;
 
@@ -100,20 +168,28 @@ function updateChart(){
       datasets:[{
         label:'每日学习时长 (分钟)',
         data: values,
-        backgroundColor:'rgba(38, 115, 255, 0.6)'
+        backgroundColor:'rgba(38, 115, 255, 0.6)',
+        borderRadius:6
       }]
     },
     options:{
-      scales:{ y:{ beginAtZero:true } },
+      scales:{
+        y:{
+          beginAtZero:true,
+          ticks:{ stepSize:10 }
+        }
+      },
       responsive:true,
       maintainAspectRatio:false
     }
   });
 }
 
+// 初始化显示
 updateDisplay();
 updateChart();
 
 </script>
+
 </body>
 </html>
